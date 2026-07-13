@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>CADENCE SYNC — 케이던스에 맞춰 뛰기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --asphalt:#14171A;
+    --panel:#1D2226;
+    --panel-2:#242A2F;
+    --panel-3:#2A3136;
+    --track-red:#C1442D;
+    --lane-yellow:#F2C94C;
+    --chalk:#EDEAE2;
+    --muted:#8B9198;
+    --sync-green:#6FCF97;
+    --warn-amber:#E0B34E;
+    --danger:#D9694F;
+    --line:#2E353B;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      repeating-linear-gradient(180deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px),
+      var(--asphalt);
+    color:var(--chalk);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    padding:28px 18px 60px;
+  }
+  .wrap{max-width:600px;margin:0 auto;}
+
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.22em;
+    color:var(--track-red);
+    text-transform:uppercase;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:6px;
+  }
+  .eyebrow::before{content:"";width:16px;height:2px;background:var(--track-red);display:inline-block;}
+  h1{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:42px;
+    letter-spacing:0.02em;
+    margin:0 0 4px;
+    line-height:0.95;
+  }
+  .sub{color:var(--muted);font-size:13.5px;margin-bottom:24px;line-height:1.5;}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px;
+    margin-bottom:16px;
+  }
+  .panel-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:0.12em;
+    color:var(--muted);
+    text-transform:uppercase;
+    margin-bottom:14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+
+  .cadence-hero{display:flex;align-items:center;gap:22px;}
+  .dial{position:relative;width:120px;height:120px;flex-shrink:0;}
+  .dial svg{transform:rotate(-90deg);}
+  .dial-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .dial-num .n{font-family:'Bebas Neue',sans-serif;font-size:36px;line-height:0.9;}
+  .dial-num .u{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.1em;margin-top:2px;}
+  .foot-pulse{
+    position:absolute;top:5px;left:50%;width:6px;height:6px;
+    background:var(--lane-yellow);border-radius:50%;
+    transform:translateX(-50%);opacity:0.25;
+    transition:opacity 0.05s, transform 0.05s;
+  }
+  .foot-pulse.hit{opacity:1;transform:translateX(-50%) scale(1.6);}
+
+  .cadence-controls{flex:1;}
+  input[type=number], input[type=text], input[type=password]{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--chalk);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;
+    padding:9px 10px;
+    border-radius:8px;
+    width:100%;
+    outline:none;
+  }
+  input:focus{border-color:var(--track-red);}
+  .row-label{font-size:11.5px;color:var(--muted);margin-bottom:6px;display:block;}
+
+  .chips{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+  .chip{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;padding:6px 11px;border-radius:20px;
+    border:1px solid var(--line);background:var(--panel-2);color:var(--muted);cursor:pointer;transition:all 0.12s;
+  }
+  .chip:hover{border-color:var(--track-red);color:var(--chalk);}
+  .chip.active{background:var(--track-red);border-color:var(--track-red);color:var(--chalk);}
+
+  .field{margin-bottom:14px;}
+  .field:last-child{margin-bottom:0;}
+  .hint{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5;}
+  a.hint-link{color:var(--lane-yellow);text-decoration:none;}
+  a.hint-link:hover{text-decoration:underline;}
+
+  button{font-family:'IBM Plex Mono',monospace;cursor:pointer;}
+  button.primary{
+    width:100%;background:var(--track-red);color:var(--chalk);border:none;
+    font-weight:600;font-size:13px;letter-spacing:0.05em;padding:13px;border-radius:9px;
+    text-transform:uppercase;transition:filter 0.12s;
+  }
+  button.primary:hover{filter:brightness(1.12);}
+  button.primary:disabled{background:var(--panel-2);color:var(--muted);cursor:not-allowed;}
+
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+  .toggle-arrow{color:var(--muted);font-size:11px;transition:transform 0.15s;}
+  .toggle-arrow.open{transform:rotate(90deg);}
+  .settings-body{margin-top:14px;display:none;}
+  .settings-body.open{display:block;}
+
+  .banner{
+    background:rgba(224,179,78,0.1);
+    border:1px solid rgba(224,179,78,0.35);
+    border-radius:10px;
+    padding:12px 14px;
+    font-size:12px;
+    color:var(--warn-amber);
+    line-height:1.6;
+    margin-bottom:14px;
+    display:none;
+  }
+  .banner.show{display:block;}
+
+  .track-list{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;padding-right:2px;}
+  .track-row{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:11px 13px;
+  }
+  .track-row.excluded{opacity:0.45;}
+  .track-top{display:flex;align-items:flex-start;gap:10px;}
+  .track-idx{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);flex-shrink:0;width:20px;padding-top:2px;}
+  .track-info{flex:1;min-width:0;}
+  .track-title{font-size:13px;font-weight:600;color:var(--chalk);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .track-artist{font-size:11.5px;color:var(--muted);margin-top:1px;}
+  .track-status{font-size:11px;margin-top:5px;font-family:'IBM Plex Mono',monospace;}
+  .track-status.found{color:var(--sync-green);}
+  .track-status.original{color:var(--muted);}
+  .track-status.excluded-txt{color:var(--danger);}
+  .spinner{
+    width:11px;height:11px;border-radius:50%;
+    border:2px solid var(--line);border-top-color:var(--lane-yellow);
+    display:inline-block;animation:spin 0.7s linear infinite;margin-right:5px;vertical-align:-1px;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .action-row{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap;align-items:center;}
+  .bpm-inline-input{
+    width:64px;background:var(--panel-3);border:1px solid var(--line);color:var(--chalk);
+    font-family:'IBM Plex Mono',monospace;font-size:12px;padding:6px 7px;border-radius:6px;outline:none;
+  }
+  .bpm-inline-input:focus{border-color:var(--lane-yellow);}
+  .btn-manual{background:var(--panel-3);border:1px solid var(--line);color:var(--chalk);font-size:11px;padding:6px 9px;border-radius:6px;}
+  .btn-manual:hover{border-color:var(--lane-yellow);}
+  .btn-original{background:var(--panel-3);border:1px solid var(--line);color:var(--muted);font-size:11px;padding:6px 9px;border-radius:6px;}
+  .btn-original:hover{border-color:var(--chalk);color:var(--chalk);}
+  .btn-remove{background:transparent;border:1px solid rgba(217,105,79,0.4);color:var(--danger);font-size:11px;padding:6px 9px;border-radius:6px;}
+  .btn-remove:hover{background:rgba(217,105,79,0.12);}
+  .btn-restore{background:transparent;border:1px solid var(--line);color:var(--muted);font-size:10.5px;padding:4px 8px;border-radius:6px;margin-top:6px;}
+  .reason-text{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5;}
+  .edit-link{font-size:10.5px;color:var(--muted);text-decoration:underline;cursor:pointer;margin-left:8px;}
+  .edit-link:hover{color:var(--chalk);}
+
+  .lock-summary{font-size:11.5px;color:var(--muted);margin-top:12px;line-height:1.6;}
+  .lock-summary b{color:var(--chalk);}
+
+  #yt-player-holder{width:100%;aspect-ratio:16/9;border-radius:10px;overflow:hidden;margin-top:4px;background:#000;}
+  #yt-player{width:100%;height:100%;}
+  .now-playing-title{font-size:13px;font-weight:600;margin-top:12px;}
+  .now-playing-meta{font-size:11.5px;color:var(--muted);margin-top:2px;}
+
+  .transport{display:flex;gap:10px;align-items:center;margin-top:12px;}
+  .transport-btn{
+    width:40px;height:40px;border-radius:50%;background:var(--panel-2);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .transport-btn svg{width:15px;height:15px;fill:var(--chalk);}
+  .transport-btn.muted{background:rgba(217,105,79,0.16);border-color:var(--danger);}
+  .transport-btn.muted svg{fill:var(--danger);}
+  .play-btn{
+    width:52px;height:52px;border-radius:50%;background:var(--lane-yellow);border:none;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
+  }
+  .play-btn svg{width:20px;height:20px;fill:var(--asphalt);}
+  .vol-wrap{flex:1;display:flex;align-items:center;gap:8px;}
+  .vol-wrap span{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+  input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:var(--line);border-radius:2px;outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--lane-yellow);cursor:pointer;border:2px solid var(--asphalt);}
+
+  .status-line{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-top:10px;min-height:14px;}
+
+  .footer-note{
+    font-size:11px;color:var(--muted);line-height:1.7;margin-top:22px;
+    padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--panel);
+  }
+  .footer-note b{color:var(--chalk);}
+  .footer-note a{color:var(--lane-yellow);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">RUN TO THE BEAT</div>
+  <h1>CADENCE SYNC</h1>
+  <div class="sub">유튜브 재생목록 전체를 미리 검색해서 배속을 고정한 뒤, 목표 케이던스로 쭉 이어 뜁니다.</div>
+
+  <div class="panel">
+    <div class="toggle-row" id="settingsToggle">
+      <div class="panel-label" style="margin-bottom:0;">00 · BPM 검색 설정</div>
+      <span class="toggle-arrow" id="settingsArrow">▶</span>
+    </div>
+    <div class="settings-body" id="settingsBody">
+      <div class="field">
+        <span class="row-label">GetSongBPM API 키</span>
+        <input type="password" id="apiKey" placeholder="발급받은 API 키를 붙여넣으세요">
+        <div class="hint">
+          <a class="hint-link" href="https://getsongbpm.com/api" target="_blank" rel="noopener">getsongbpm.com/api</a> 에서 무료로 발급받을 수 있어요 (이메일 제출 필요). 키는 이 기기에만 저장되고 서버로 전송되지 않습니다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">01 · 목표 케이던스</div>
+    <div class="cadence-hero">
+      <div class="dial">
+        <svg viewBox="0 0 120 120" width="120" height="120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#2E353B" stroke-width="6"/>
+          <circle id="dialProgress" cx="60" cy="60" r="52" fill="none" stroke="#F2C94C" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+        <div class="foot-pulse" id="footPulse"></div>
+        <div class="dial-num">
+          <div class="n" id="cadenceDisplay">180</div>
+          <div class="u">SPM</div>
+        </div>
+      </div>
+      <div class="cadence-controls">
+        <span class="row-label">분당 걸음 수 (BPM)</span>
+        <input type="number" id="targetBpm" value="180" min="120" max="220" step="1">
+        <div class="chips">
+          <div class="chip" data-bpm="160">160</div>
+          <div class="chip" data-bpm="170">170</div>
+          <div class="chip active" data-bpm="180">180</div>
+          <div class="chip" data-bpm="190">190</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">02 · 재생목록 불러오기</div>
+    <div class="field">
+      <span class="row-label">유튜브 재생목록 URL</span>
+      <input type="text" id="playlistUrl" placeholder="https://www.youtube.com/playlist?list=...">
+    </div>
+    <button class="primary" id="loadPlaylistBtn">재생목록 불러오고 BPM 일괄 검색</button>
+    <div class="status-line" id="loadStatus"></div>
+  </div>
+
+  <div class="panel" id="trackPanel" style="display:none;">
+    <div class="panel-label">
+      <span>03 · 곡 목록 <span id="trackProgress" style="color:var(--chalk);"></span></span>
+    </div>
+    <div class="banner" id="corsBanner">
+      ⚠ 자동 검색이 막힌 것 같아요 (브라우저 보안 정책 때문일 수 있어요). 이제부터는 곡마다 직접 BPM을 입력하거나, 원곡 그대로 재생하거나, 목록에서 제거해주세요.
+    </div>
+    <div class="track-list" id="trackList"></div>
+    <div class="lock-summary" id="lockSummary"></div>
+    <button class="primary" id="lockBtn" style="margin-top:14px;" disabled>배속 고정하고 재생 준비</button>
+  </div>
+
+  <div class="panel" id="playPanel" style="display:none;">
+    <div class="panel-label">04 · 재생</div>
+    <div id="yt-player-holder"><div id="yt-player"></div></div>
+    <div class="now-playing-title" id="npTitle">—</div>
+    <div class="now-playing-meta" id="npMeta">—</div>
+
+    <div class="transport">
+      <button class="transport-btn" id="prevBtn">
+        <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+      </button>
+      <button class="play-btn" id="playBtn">
+        <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button class="transport-btn" id="nextBtn">
+        <svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zm-9.5 6l8.5-6v12z"/></svg>
+      </button>
+      <button class="transport-btn" id="metroMuteBtn" title="메트로놈 켜기/끄기">
+        <svg id="metroMuteIcon" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3z"/></svg>
+      </button>
+      <div class="vol-wrap">
+        <span>클릭 음량</span>
+        <input type="range" id="metroVol" min="0" max="1" step="0.01" value="0.5">
+      </div>
+    </div>
+    <div class="status-line" id="playStatus"></div>
+  </div>
+
+  <div class="footer-note">
+    <b>알아두면 좋은 점</b> — 배속은 항상 <b>원곡보다 빠르게(가속)</b>만 적용돼요. 느리게 트는 경우는 없고, 가속으로 맞출 수 없으면 원곡 속도 그대로 재생합니다. BPM 데이터는 <a href="https://getsongbpm.com" target="_blank" rel="noopener">GetSongBPM.com</a> 제공입니다. 신곡·리믹스·비인기곡은 데이터베이스에 없을 수 있어요. 유튜브 플레이어와 메트로놈은 독립된 소리라 완벽히 하나로 믹싱되진 않고, 유튜브 쪽 배속 스냅으로 실제 적용 배속이 계산값과 미세하게 다를 수 있습니다.
+  </div>
+
+</div>
+
+<script>
+// ================= 배속/메트로놈 비율 계산 =================
+const RATIO_CANDIDATES = [
+  {a:1,b:1}, {a:2,b:1}, {a:1,b:2},
+  {a:3,b:2}, {a:2,b:3},
+  {a:4,b:3}, {a:3,b:4}
+];
+const MAX_DEVIATION = 0.15;
+
+function computeSync(targetBpm, songBpm){
+  if(!songBpm || songBpm <= 0){
+    return {mode:'independent', rate:1, effectiveSongBpm:null, ratioText:null};
+  }
+  // 스피드업(가속)만 허용: rate는 1.0 ~ 1+MAX_DEVIATION 사이만 인정하고,
+  // 원곡보다 느려지는 rate(<1)는 절대 선택하지 않음.
+  let best = null;
+  for(const {a,b} of RATIO_CANDIDATES){
+    const candidateSongBpm = targetBpm * b / a;
+    const rate = candidateSongBpm / songBpm;
+    if(rate < 1 || rate > 1 + MAX_DEVIATION) continue;
+    const deviation = rate - 1;
+    const simplicity = a + b;
+    if(!best || deviation < best.deviation - 1e-9 ||
+       (Math.abs(deviation-best.deviation) < 1e-6 && simplicity < best.simplicity)){
+      best = {a,b,candidateSongBpm,rate,deviation,simplicity};
+    }
+  }
+  if(best){
+    return {mode:'sync', rate:best.rate, effectiveSongBpm:best.candidateSongBpm, ratioText:`${best.b}:${best.a}`};
+  }
+  return {mode:'independent', rate:1, effectiveSongBpm:songBpm, ratioText:null};
+}
+function fmt(n, d=2){ if(n===null||n===undefined) return '—'; return Number(n).toFixed(d).replace(/\.00$/,''); }
+
+function currentTarget(){ return parseFloat(document.getElementById('targetBpm').value) || 180; }
+
+document.getElementById('targetBpm').addEventListener('input', (e)=>{
+  document.getElementById('cadenceDisplay').textContent = e.target.value || '--';
+  syncChipActive(parseInt(e.target.value));
+  refreshAllRowStatuses();
+  if(typeof updateMetronomeInterval === 'function' && metroTimer) updateMetronomeInterval();
+});
+document.querySelectorAll('.chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    const bpm = chip.dataset.bpm;
+    document.getElementById('targetBpm').value = bpm;
+    document.getElementById('cadenceDisplay').textContent = bpm;
+    syncChipActive(parseInt(bpm));
+    refreshAllRowStatuses();
+    if(typeof updateMetronomeInterval === 'function' && metroTimer) updateMetronomeInterval();
+  });
+});
+function syncChipActive(bpm){
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('active', parseInt(c.dataset.bpm)===bpm));
+}
+function updateDial(){
+  const c = document.getElementById('dialProgress');
+  const circumference = 2*Math.PI*52;
+  c.setAttribute('stroke-dasharray', circumference);
+  c.setAttribute('stroke-dashoffset', 0);
+}
+updateDial();
+
+const settingsToggle = document.getElementById('settingsToggle');
+const settingsBody = document.getElementById('settingsBody');
+const settingsArrow = document.getElementById('settingsArrow');
+settingsToggle.addEventListener('click', ()=>{
+  settingsBody.classList.toggle('open');
+  settingsArrow.classList.toggle('open');
+});
+const apiKeyInput = document.getElementById('apiKey');
+apiKeyInput.value = localStorage.getItem('cadence_gsbpm_key') || '';
+apiKeyInput.addEventListener('change', ()=>{
+  localStorage.setItem('cadence_gsbpm_key', apiKeyInput.value.trim());
+});
+if(!apiKeyInput.value){
+  settingsBody.classList.add('open');
+  settingsArrow.classList.add('open');
+}
+
+function loadCache(){
+  try{ return JSON.parse(localStorage.getItem('cadence_bpm_cache') || '{}'); }catch(e){ return {}; }
+}
+function saveCacheEntry(videoId, entry){
+  const cache = loadCache();
+  cache[videoId] = entry;
+  localStorage.setItem('cadence_bpm_cache', JSON.stringify(cache));
+}
+
+function parsePlaylistId(url){
+  try{
+    const u = new URL(url.trim());
+    return u.searchParams.get('list');
+  }catch(e){ return null; }
+}
+
+let ytPlayer = null;
+let ytReady = false;
+const tag = document.createElement('script');
+tag.src = "https://www.youtube.com/iframe_api";
+document.head.appendChild(tag);
+window.onYouTubeIframeAPIReady = function(){
+  ytPlayer = new YT.Player('yt-player', {
+    height:'100%', width:'100%',
+    playerVars:{rel:0, playsinline:1},
+    events:{
+      onReady: ()=>{ ytReady = true; },
+      onStateChange: onPlayerStateChange
+    }
+  });
+};
+
+let tracks = [];
+let corsBlocked = false;
+
+document.getElementById('loadPlaylistBtn').addEventListener('click', async ()=>{
+  const listId = parsePlaylistId(document.getElementById('playlistUrl').value);
+  const statusEl = document.getElementById('loadStatus');
+  if(!listId){ statusEl.textContent = '재생목록 URL을 인식하지 못했어요. list= 파라미터가 있는 링크인지 확인해주세요.'; return; }
+  if(!ytReady){ statusEl.textContent = '플레이어를 불러오는 중이에요. 잠시 후 다시 시도해주세요.'; return; }
+
+  statusEl.textContent = '재생목록 정보를 가져오는 중...';
+  document.getElementById('loadPlaylistBtn').disabled = true;
+
+  ytPlayer.cuePlaylist({listType:'playlist', list:listId, index:0});
+
+  const videoIds = await waitForPlaylistIds();
+  if(!videoIds || videoIds.length === 0){
+    statusEl.textContent = '재생목록을 불러오지 못했어요. 링크를 다시 확인해주세요.';
+    document.getElementById('loadPlaylistBtn').disabled = false;
+    return;
+  }
+
+  tracks = videoIds.map((id, i)=>({
+    videoId:id, index:i, rawTitle:null, artist:null, cleanSong:null,
+    bpm:null, status:'pending', source:null
+  }));
+  corsBlocked = false;
+  document.getElementById('corsBanner').classList.remove('show');
+  document.getElementById('trackPanel').style.display = 'block';
+  renderTrackList();
+  statusEl.textContent = `${tracks.length}곡 발견. BPM 검색 중...`;
+  document.getElementById('loadPlaylistBtn').disabled = false;
+
+  await processAllTracks();
+  statusEl.textContent = `검색 완료. 확인이 필요한 곡이 있으면 아래에서 처리해주세요.`;
+});
+
+function waitForPlaylistIds(){
+  return new Promise((resolve)=>{
+    let resolved = false;
+    let attempts = 0;
+    const poll = setInterval(()=>{
+      attempts++;
+      const list = ytPlayer.getPlaylist ? ytPlayer.getPlaylist() : null;
+      if(list && list.length){
+        clearInterval(poll);
+        if(!resolved){ resolved = true; resolve(list); }
+      } else if(attempts > 40){
+        clearInterval(poll);
+        if(!resolved) resolve(null);
+      }
+    }, 200);
+  });
+}
+
+async function processAllTracks(){
+  const POOL = 3;
+  let cursor = 0;
+  async function worker(){
+    while(cursor < tracks.length){
+      const t = tracks[cursor]; cursor++;
+      await processTrack(t);
+      renderTrackRow(t);
+      updateProgressLabel();
+    }
+  }
+  await Promise.all(Array.from({length:POOL}, worker));
+  refreshLockAvailability();
+}
+
+function updateProgressLabel(){
+  const done = tracks.filter(t=>t.status!=='pending' && t.status!=='searching').length;
+  document.getElementById('trackProgress').textContent = `(${done}/${tracks.length})`;
+}
+
+async function processTrack(t){
+  t.status = 'searching';
+  renderTrackRow(t);
+
+  const cache = loadCache();
+  if(cache[t.videoId]){
+    const c = cache[t.videoId];
+    t.rawTitle = c.title; t.artist = c.artist; t.bpm = c.bpm;
+    t.status = c.status; t.source = c.source;
+    return;
+  }
+
+  try{
+    const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v='+t.videoId)}&format=json`);
+    if(!res.ok) throw new Error('oembed failed');
+    const data = await res.json();
+    t.rawTitle = data.title || '(제목 없음)';
+    t.artist = cleanArtist(data.author_name || '');
+  }catch(e){
+    t.rawTitle = '(제목을 가져오지 못했어요)';
+    t.artist = '';
+    t.status = 'needs_action';
+    t.failReason = 'title_failed';
+    return;
+  }
+
+  const apiKey = (localStorage.getItem('cadence_gsbpm_key') || '').trim();
+  if(!apiKey){
+    t.status = 'needs_action';
+    t.failReason = 'no_key';
+    return;
+  }
+  if(corsBlocked){
+    t.status = 'needs_action';
+    t.failReason = 'blocked';
+    return;
+  }
+
+  const {artist, song} = splitArtistTitle(t.rawTitle, t.artist);
+  t.cleanSong = song;
+
+  try{
+    let lookup = artist ? `song:${song} artist:${artist}` : song;
+    const url = `https://api.getsong.co/search/?api_key=${encodeURIComponent(apiKey)}&type=${artist?'both':'song'}&lookup=${encodeURIComponent(lookup)}`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('api error');
+    const data = await res.json();
+    const results = data.search;
+    if(results && results.length && results[0].tempo){
+      t.bpm = parseInt(results[0].tempo, 10);
+      t.status = 'found';
+      t.source = 'auto';
+      saveCacheEntry(t.videoId, {title:t.rawTitle, artist:t.artist, bpm:t.bpm, status:'found', source:'auto'});
+    } else {
+      t.status = 'needs_action';
+      t.failReason = 'not_found';
+    }
+  }catch(e){
+    corsBlocked = true;
+    document.getElementById('corsBanner').classList.add('show');
+    t.status = 'needs_action';
+    t.failReason = 'blocked';
+  }
+}
+
+function cleanArtist(author){
+  return (author || '').replace(/\s*-\s*Topic$/i,'').replace(/VEVO$/i,'').trim();
+}
+function splitArtistTitle(rawTitle, oembedArtist){
+  let title = rawTitle
+    .replace(/\(.*?\)/g,'')
+    .replace(/\[.*?\]/g,'')
+    .replace(/【.*?】/g,'')
+    .replace(/official\s*(music\s*)?video/gi,'')
+    .replace(/official\s*audio/gi,'')
+    .replace(/lyrics?\s*video/gi,'')
+    .replace(/\bm\/?v\b/gi,'')
+    .replace(/\bHD\b|\b4K\b/gi,'')
+    .replace(/feat\.?.*/gi,'')
+    .replace(/ft\.?.*/gi,'')
+    .replace(/\s{2,}/g,' ')
+    .replace(/[-|:]\s*$/,'')
+    .trim();
+
+  const parts = title.split(/\s-\s/);
+  if(parts.length >= 2){
+    return {artist: parts[0].trim(), song: parts.slice(1).join(' - ').trim()};
+  }
+  return {artist: oembedArtist || null, song: title};
+}
+
+function renderTrackList(){
+  const list = document.getElementById('trackList');
+  list.innerHTML = '';
+  tracks.forEach(t=>{
+    const row = document.createElement('div');
+    row.className = 'track-row';
+    row.id = `track-${t.videoId}-${t.index}`;
+    list.appendChild(row);
+  });
+  tracks.forEach(renderTrackRow);
+  updateProgressLabel();
+}
+
+function renderTrackRow(t){
+  const row = document.getElementById(`track-${t.videoId}-${t.index}`);
+  if(!row) return;
+  row.classList.toggle('excluded', t.status === 'excluded');
+
+  const target = currentTarget();
+  let bodyHtml = `
+    <div class="track-top">
+      <div class="track-idx">${t.index+1}</div>
+      <div class="track-info">
+        <div class="track-title">${escapeHtml(t.rawTitle || '불러오는 중...')}</div>
+        ${t.artist ? `<div class="track-artist">${escapeHtml(t.artist)}</div>` : ''}
+  `;
+
+  if(t.status === 'pending' || t.status === 'searching'){
+    bodyHtml += `<div class="track-status"><span class="spinner"></span>BPM 검색 중...</div>`;
+  } else if(t.status === 'found' || t.status === 'manual'){
+    const sync = computeSync(target, t.bpm);
+    const label = t.source === 'manual' ? '직접 입력' : '자동 검색';
+    bodyHtml += `<div class="track-status found">✓ ${t.bpm} bpm (${label})
+      <span class="edit-link" data-action="edit" data-vid="${t.videoId}" data-idx="${t.index}">수정</span>
+    </div>`;
+    bodyHtml += `<div class="reason-text">${syncSummary(sync, t.bpm, target)}</div>`;
+  } else if(t.status === 'original_speed'){
+    bodyHtml += `<div class="track-status original">➜ 원곡 속도로 재생 (메트로놈만 ${target} bpm 독립 재생)
+      <span class="edit-link" data-action="edit" data-vid="${t.videoId}" data-idx="${t.index}">수정</span>
+    </div>`;
+  } else if(t.status === 'excluded'){
+    bodyHtml += `<div class="track-status excluded-txt">✕ 재생목록에서 제거됨</div>`;
+  } else if(t.status === 'needs_action'){
+    const reasonMap = {
+      title_failed: '제목을 가져오지 못했어요.',
+      no_key: 'API 키가 없어서 자동 검색을 못했어요.',
+      not_found: 'BPM 데이터베이스에서 이 곡을 찾지 못했어요.',
+      blocked: '자동 검색이 막혔어요 (브라우저 보안 정책).'
+    };
+    bodyHtml += `<div class="reason-text">⚠ ${reasonMap[t.failReason] || '자동으로 처리하지 못했어요.'}</div>`;
+  }
+
+  bodyHtml += `</div></div>`;
+
+  if(t.status === 'needs_action'){
+    bodyHtml += `
+      <div class="action-row">
+        <input type="number" class="bpm-inline-input" placeholder="BPM" id="input-${t.videoId}-${t.index}">
+        <button class="btn-manual" data-action="manual" data-vid="${t.videoId}" data-idx="${t.index}">수동으로 입력하기</button>
+        <button class="btn-original" data-action="original" data-vid="${t.videoId}" data-idx="${t.index}">원곡 재생하기</button>
+        <button class="btn-remove" data-action="remove" data-vid="${t.videoId}" data-idx="${t.index}">재생목록에서 제거하기</button>
+      </div>
+    `;
+  } else if(t.status === 'excluded'){
+    bodyHtml += `<button class="btn-restore" data-action="restore" data-vid="${t.videoId}" data-idx="${t.index}">복원하기</button>`;
+  } else if(t.status === 'found' || t.status === 'manual' || t.status === 'original_speed'){
+    bodyHtml += `
+      <div class="action-row">
+        <button class="btn-remove" data-action="remove" data-vid="${t.videoId}" data-idx="${t.index}">재생목록에서 제거하기</button>
+      </div>
+    `;
+  }
+
+  row.innerHTML = bodyHtml;
+}
+
+function syncSummary(sync, songBpm, target){
+  if(sync.mode === 'sync'){
+    if(sync.ratioText === '1:1'){
+      return `${fmt(sync.rate,2)}배속으로 목표와 1:1 정확히 맞춤`;
+    }
+    return `${fmt(sync.rate,2)}배속 · ${fmt(sync.effectiveSongBpm,0)}bpm으로 보정 · 곡:클릭 = ${sync.ratioText}`;
+  }
+  return `배속 없이 원곡 그대로, 메트로놈만 ${target}bpm 독립 재생`;
+}
+
+function escapeHtml(s){
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+document.getElementById('trackList').addEventListener('click', (e)=>{
+  const btn = e.target.closest('[data-action]');
+  if(!btn) return;
+  const vid = btn.dataset.vid;
+  const idx = parseInt(btn.dataset.idx, 10);
+  const t = tracks.find(x=>x.videoId===vid && x.index===idx);
+  if(!t) return;
+
+  if(btn.dataset.action === 'manual'){
+    const input = document.getElementById(`input-${vid}-${idx}`);
+    const val = parseFloat(input.value);
+    if(!val || val < 40 || val > 240){ input.style.borderColor = 'var(--danger)'; return; }
+    t.bpm = val; t.status = 'manual'; t.source = 'manual';
+    saveCacheEntry(t.videoId, {title:t.rawTitle, artist:t.artist, bpm:t.bpm, status:'manual', source:'manual'});
+    renderTrackRow(t);
+  } else if(btn.dataset.action === 'original'){
+    t.status = 'original_speed'; t.source = 'original'; t.bpm = null;
+    saveCacheEntry(t.videoId, {title:t.rawTitle, artist:t.artist, bpm:null, status:'original_speed', source:'original'});
+    renderTrackRow(t);
+  } else if(btn.dataset.action === 'remove'){
+    const wasCurrent = isLocked && currentTrack && currentTrack.videoId === t.videoId && currentTrack.index === t.index;
+    t.status = 'excluded';
+    renderTrackRow(t);
+    if(wasCurrent){ advanceAfterRemoval(t); }
+  } else if(btn.dataset.action === 'restore'){
+    t.status = 'needs_action'; t.failReason = t.failReason || 'not_found';
+    renderTrackRow(t);
+  } else if(btn.dataset.action === 'edit'){
+    t.status = 'needs_action'; t.failReason = t.failReason || 'not_found';
+    renderTrackRow(t);
+  }
+  updateProgressLabel();
+  refreshLockAvailability();
+});
+
+function refreshAllRowStatuses(){
+  tracks.forEach(renderTrackRow);
+}
+
+function refreshLockAvailability(){
+  const lockBtn = document.getElementById('lockBtn');
+  const pendingOrSearching = tracks.some(t=>t.status==='pending' || t.status==='searching');
+  const needsAction = tracks.some(t=>t.status==='needs_action');
+  const included = tracks.filter(t=>t.status!=='excluded');
+  lockBtn.disabled = pendingOrSearching || needsAction || included.length===0;
+
+  const summary = document.getElementById('lockSummary');
+  const foundCount = tracks.filter(t=>t.status==='found'||t.status==='manual').length;
+  const origCount = tracks.filter(t=>t.status==='original_speed').length;
+  const exCount = tracks.filter(t=>t.status==='excluded').length;
+  summary.innerHTML = `총 <b>${tracks.length}</b>곡 · 동기화 <b>${foundCount}</b> · 원곡재생 <b>${origCount}</b> · 제거 <b>${exCount}</b>`;
+}
+
+let isLocked = false;
+let currentTrack = null;   // 현재 재생 중인 track 객체 참조
+let lastSyncedTrack = null; // 마지막으로 메트로놈 위상을 리셋해준 track
+
+// 재생 대상 = lockedSync가 있고 제거되지 않은 트랙들, 원래 순서 유지
+function getActiveQueue(){
+  return tracks.filter(t => t.lockedSync && t.status !== 'excluded');
+}
+
+document.getElementById('lockBtn').addEventListener('click', ()=>{
+  const target = currentTarget();
+  tracks.forEach(t=>{
+    if(t.status === 'excluded') return;
+    t.lockedSync = t.status === 'original_speed'
+      ? {mode:'independent', rate:1, effectiveSongBpm:null}
+      : computeSync(target, t.bpm);
+  });
+  isLocked = true;
+  currentTrack = null;
+  lastSyncedTrack = null;
+  document.getElementById('playPanel').style.display = 'block';
+  document.getElementById('playPanel').scrollIntoView({behavior:'smooth', block:'start'});
+  document.getElementById('playStatus').textContent = `${getActiveQueue().length}곡 준비 완료. 재생 버튼을 눌러주세요.`;
+});
+
+function playTrack(t){
+  currentTrack = t;
+  ytPlayer.loadVideoById(t.videoId);
+  const q = getActiveQueue();
+  const pos = q.indexOf(t);
+  document.getElementById('npTitle').textContent = t.rawTitle || '—';
+  const modeLabel = t.lockedSync.mode==='sync' ? `${fmt(t.lockedSync.rate,2)}× 배속 동기화` : '원곡 속도 · 메트로놈 독립 재생';
+  document.getElementById('npMeta').textContent = `${pos+1}/${q.length} · ${modeLabel}`;
+}
+
+// 재생 중이던 곡이 방금 제거됐을 때, 원래 순서 기준으로 다음 곡으로 즉시 이동
+function advanceAfterRemoval(removedTrack){
+  const next = tracks
+    .filter(x => x.lockedSync && x.status !== 'excluded' && x.index > removedTrack.index)
+    .sort((a,b)=>a.index-b.index)[0];
+  if(next){
+    playTrack(next);
+  } else {
+    stopMetronome();
+    currentTrack = null;
+    setPlayIcon(false);
+    document.getElementById('npTitle').textContent = '—';
+    document.getElementById('npMeta').textContent = '—';
+    document.getElementById('playStatus').textContent = '재생목록이 끝났어요.';
+  }
+}
+
+function onPlayerStateChange(e){
+  if(e.data === YT.PlayerState.PLAYING){
+    if(currentTrack){
+      try{ ytPlayer.setPlaybackRate(currentTrack.lockedSync.rate); }catch(err){}
+      if(currentTrack !== lastSyncedTrack){
+        // 새로 시작한 곡 -> 메트로놈 박자를 지금 이 순간에 맞춰 리셋
+        startMetronomeFresh();
+        lastSyncedTrack = currentTrack;
+      } else {
+        // 같은 곡을 일시정지했다가 다시 재생 -> 박자 유지
+        resumeMetronome();
+      }
+    }
+    setPlayIcon(true);
+  } else if(e.data === YT.PlayerState.PAUSED){
+    setPlayIcon(false);
+  } else if(e.data === YT.PlayerState.ENDED){
+    const q = getActiveQueue();
+    const pos = q.indexOf(currentTrack);
+    if(pos >= 0 && pos + 1 < q.length){
+      playTrack(q[pos + 1]);
+    } else {
+      stopMetronome();
+      setPlayIcon(false);
+      document.getElementById('playStatus').textContent = '재생목록이 끝났어요.';
+    }
+  }
+}
+
+document.getElementById('playBtn').addEventListener('click', ()=>{
+  if(!ytReady || !isLocked) return;
+  if(!currentTrack){
+    const q = getActiveQueue();
+    if(q.length) playTrack(q[0]);
+    return;
+  }
+  const state = ytPlayer.getPlayerState();
+  if(state === 1){ ytPlayer.pauseVideo(); } else { ytPlayer.playVideo(); }
+});
+document.getElementById('nextBtn').addEventListener('click', ()=>{
+  if(!currentTrack) return;
+  const q = getActiveQueue();
+  const pos = q.indexOf(currentTrack);
+  if(pos + 1 < q.length) playTrack(q[pos + 1]);
+});
+document.getElementById('prevBtn').addEventListener('click', ()=>{
+  if(!currentTrack) return;
+  const q = getActiveQueue();
+  const pos = q.indexOf(currentTrack);
+  if(pos - 1 >= 0) playTrack(q[pos - 1]);
+});
+function setPlayIcon(isPlaying){
+  const icon = document.getElementById('playIcon');
+  icon.innerHTML = isPlaying
+    ? '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>'
+    : '<path d="M8 5v14l11-7z"/>';
+}
+
+let audioCtx = null;
+let metroTimer = null;
+let nextClickTime = 0;
+let clickInterval = 60/180;
+let metronomeMuted = false;
+const SCHEDULE_AHEAD = 0.12;
+const LOOKAHEAD_MS = 25;
+
+function ensureAudioCtx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+}
+function updateMetronomeInterval(){
+  clickInterval = 60 / currentTarget();
+}
+function playClick(time){
+  const delayMs = (time - audioCtx.currentTime) * 1000;
+  if(!metronomeMuted){
+    const vol = parseFloat(document.getElementById('metroVol').value);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = 1000;
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(vol, time + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.045);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(time);
+    osc.stop(time + 0.05);
+  }
+  // 소리는 꺼져 있어도 발걸음 표시는 계속 보여줌
+  setTimeout(()=>{
+    const fp = document.getElementById('footPulse');
+    fp.classList.add('hit');
+    setTimeout(()=>fp.classList.remove('hit'), 90);
+  }, Math.max(0, delayMs));
+}
+function scheduler(){
+  while(nextClickTime < audioCtx.currentTime + SCHEDULE_AHEAD){
+    playClick(nextClickTime);
+    nextClickTime += clickInterval;
+  }
+}
+// 새 곡이 시작될 때: 지금 이 순간을 기준으로 박자를 처음부터 다시 셈
+function startMetronomeFresh(){
+  ensureAudioCtx();
+  updateMetronomeInterval();
+  nextClickTime = audioCtx.currentTime + 0.05;
+  if(!metroTimer){ metroTimer = setInterval(scheduler, LOOKAHEAD_MS); }
+}
+// 같은 곡을 일시정지 후 재개할 때: 기존 박자 그대로 이어감
+function resumeMetronome(){
+  ensureAudioCtx();
+  updateMetronomeInterval();
+  if(!metroTimer){
+    nextClickTime = audioCtx.currentTime + 0.05;
+    metroTimer = setInterval(scheduler, LOOKAHEAD_MS);
+  }
+}
+function stopMetronome(){
+  if(metroTimer){ clearInterval(metroTimer); metroTimer = null; }
+}
+
+const metroMuteBtn = document.getElementById('metroMuteBtn');
+metroMuteBtn.addEventListener('click', ()=>{
+  metronomeMuted = !metronomeMuted;
+  metroMuteBtn.classList.toggle('muted', metronomeMuted);
+  document.getElementById('metroMuteIcon').innerHTML = metronomeMuted
+    ? '<path d="M16.5 12A4.5 4.5 0 0014 7.97v2.21l2.45 2.45c.03-.2.05-.42.05-.63zM19 12c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.8 8.8 0 0021 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 003.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>'
+    : '<path d="M3 9v6h4l5 5V4L7 9H3z"/>';
+});
+</script>
+</body>
+</html>
